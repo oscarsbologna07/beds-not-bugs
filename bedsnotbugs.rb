@@ -30,16 +30,27 @@ utilization = hospitalized_by_county.merge(beds_per_county) do |key, hospitalize
   hospitalized.merge(beds)
 end
 
-percentage = utilization.each_with_object({}) do |(county, data), store|
+percentages = utilization.each_with_object({}) do |(county, data), store|
   if data[:beds].nil? or data[:hospitalized].nil?
     store["#{county}"] = data
   else
     percentage = (data[:hospitalized].fdiv(data[:beds]) * 100).round(2)
-    store["#{county}"] = data.merge(percentage: percentage)
+    store["#{county}"] = data.merge(utilization: percentage)
   end
 end
 
+sorted_percentages = percentages.sort_by { _2&.fetch(:utilization) { -1 } }.reverse
+
 puts "Total hospitalizations in Florida: #{total_beds_used}"
-pp percentage
+csv = CSV.generate do |csv|
+  csv << ["County", "Beds", "Hospitalized", "Utilization"]
+
+  sorted_percentages.each do |county, data|
+    csv << [county, data[:beds], data[:hospitalized], data[:utilization]]
+  end
+end
+
+puts csv
+
 
 
